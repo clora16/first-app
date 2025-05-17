@@ -9,15 +9,26 @@ type Result = { id: number; title: string };
 export default function ButtonPage(): React.JSX.Element {
 	// 状態変数queryを宣言、初期値は空文字列
   const [query, setQuery] = useState('');
-
   const [results, setResults] = useState<Result[]>([]);
+  const [isLoading, setIsLoading] = useState(false);        // ← ローディング
+  const [error, setError] = useState<string | null>(null);  // ← エラー
 
 	// ボタン押下時に呼ばれるイベントハンドラ
 	// 今はalertで検索ワードを表示する動作のみ
   const handleSearch = async () => {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-    const { results } = await res.json();
-    setResults(results);
+    setError(null);
+    setIsLoading(true);
+    try{
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+
+      if (!res.ok) throw new Error(`${res.status}`);
+      const { results } = await res.json();
+      setResults(results);
+    } catch (e: any){
+      setError('検索に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -32,11 +43,21 @@ export default function ButtonPage(): React.JSX.Element {
         />
         <Button onClick={handleSearch}>検索</Button> {/* ボタンの描画 */}
       </div>
-      <ul className="space-y-2">
-        {results.map(item => (
-          <ResultItem key={item.id} title={item.title} />
-        ))}
-      </ul>
+
+      {/* ローディング中 */}
+      {isLoading && <p>検索中…</p>}
+
+      {/* エラー表示 */}
+      {error && <p className="text-red-500">{error}</p>}
+
+      {/* 結果リスト */}
+      {!isLoading && !error && (
+        <ul className="space-y-2">
+          {results.map(item => (
+            <ResultItem key={item.id} title={item.title} />
+          ))}
+        </ul>
+      )}
     </main>
   );
 }
